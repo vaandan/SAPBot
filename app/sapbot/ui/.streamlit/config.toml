@@ -1,0 +1,20 @@
+[theme]
+# SAP Fiori Horizon visual language (ADR E4) - Fiori look, no SAP branding
+base = "light"
+primaryColor = "#0070F2"
+backgroundColor = "#F5F6F7"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1D2D3E"
+font = "sans-serif"
+
+[server]
+headless = true
+address = "localhost"
+runOnSave = false
+maxUploadSize = 50
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

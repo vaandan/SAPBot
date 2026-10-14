@@ -1,0 +1,78 @@
+# SAPBot global settings (defaults). Copied to <SAPBOT_HOME>\config\sapbot.yaml on `sapbot init`.
+# Per-client settings live in <SAPBOT_HOME>\workspaces\<client_id>\workspace.yaml.
+# Secrets (API keys, Hub token) are NEVER stored here - they go to Windows Credential Manager.
+
+models:
+  claude_model: claude-sonnet-5-5          # API mode default (config value, change freely)
+  claude_escalation_model: claude-opus-5-5 # used when a run escalates
+  local_model:
+    base_url: ""                            # e.g. http://hub-server:8000/v1 (vLLM) or http://localhost:11434/v1 (Ollama)
+    model: qwen2.5-14b-instruct
+    timeout_seconds: 120
+
+agent:
+  max_turns: 25                # FSD 3.4
+  loop_repeat_limit: 3         # same tool+args with identical status bar -> pause for human
+  max_tokens_per_run: 400000   # B13 cost control (API mode)
+
+router:                         # B7 - only used when feature 'router' is enabled
+  min_gold_examples: 10
+  escalate_after_failed_steps: 1
+
+rag:
+  top_k: 3
+  min_similarity: 0.35
+
+sap:
+  open_own_session: true        # B3
+  standard_language: EN         # B4 firm standard
+  standard_date_format: DD.MM.YYYY
+  grid_clipboard_threshold: 100 # FSD 3.1.4
+  run_timeout_seconds: 600
+  # Warnings acknowledged automatically with Enter (message class/number, e.g. "V1/555"). Empty = never auto-ack.
+  warning_allowlist: []
+  # What counts as a WRITE (posting/saving) action:
+  write_vkeys: [11]
+  write_button_suffixes: ["tbar[0]/btn[11]"]
+  write_okcodes: ["SAVE", "BU", "POST", "SICH", "OK_POST", "MESAVE", "BUS_MAIN_SAVE", "UPDA", "DELE", "LOES"]
+  # Function codes that are safe in read-only mode. ANY other function code inside a transaction counts as a
+  # write-risk action (needs write mode / grant; on PROD also approval).
+  safe_okcodes: ["BACK", "%EX", "RW", "ENTR", "ENTE", "ONLI", "CRET", "PICK", "&F03", "&F12", "&F15", "CANC",
+                 "DETA", "&ALL", "&SAL", "P+", "P-", "P++", "P--", "&OUP", "&ODN", "&ILT", "&XXL", "&PC",
+                 "&MB_FILTER", "&FIND", "&FIND_MORE", "&SUM", "&SORT_ASC", "&SORT_DSC", "&NFO", "&INFO"]
+  # Virtual keys allowed in read-only mode (Enter, F2, F3, F8, F12, page keys); others count as write-risk.
+  readonly_vkeys: [0, 2, 3, 8, 12, 80, 81, 82, 83]
+  # Clicks whose text/tooltip matches this are write-risk; popup clicks are write-risk unless they match safe.
+  risky_click_regex: "save|post|change|edit|delete|create|release|confirm|convert|book|approve|reject|lock|unlock|execute mass|sichern|buchen|ändern|löschen|anlegen|freigeben|\\byes\\b|\\bja\\b"
+  safe_popup_regex: "cancel|abbrechen|\\bno\\b|nein|close|schließen|continue|weiter|information|^ok$|check"
+  # Always need explicit approval, on every system (and write permission for input inside them):
+  hard_stop_tcodes: [SE14, SE38, SA38, SE37, SE80, SM12, SM30, SM31, SM34, SE16, SCC4, SCC5, SE10, STMS, SU01, PFCG,
+                     SM59, RZ10, RZ11, SE06, SCC1]
+  hard_stop_okcodes: ["&SAP_EDIT", "&SAP_DELETE", "/H", "/HS"]
+  # Display transactions (navigating to these is always allowed; also used by the VBS read-only scanner)
+  display_tcodes: [SE16N, SE16H, SM37, SU01D, SUIM, MD04, MD16, MD05, MD06, MD07, CO46, COR3, CO03,
+                   COOIS, COOISPI, CS03, CS11, CS12, CS13, CS15, C203, C251, C252, CR03, CRC3, CR05, CR60,
+                   CA03, MM03, MMBE, MB51, MB52, MB5B, MB56, MB03, BMBC, MSC3N, MD61D, ME23N, ME2N, ME2L, ME2M,
+                   ME5A, ME53N, ME33K, ME3L, ME13, ME1L, ME03, ME0M, VA03, VA05, VL03N, VF03, VK13, XD03, QA03,
+                   QA32, QE51N, QM03, QP03, QS23, QS43, FB03, FBL1N, FBL3N, FBL5N, KS03, KSB1, KOB1, CK13N,
+                   S_ALR_87013611, SPRO_DISPLAY, SCU3, SCC4_DISPLAY, SE16N_DISPLAY, SM12_DISPLAY, ST22, SM21, SU53]
+
+approvals:
+  mode: dialog                  # dialog (Windows popup, Cowork mode) | db (Cockpit approves) | deny
+  timeout_seconds: 300
+
+hub:
+  url: ""                       # e.g. https://sapbot-hub.office.local:8443
+  public_key_file: ""           # Hub policy-signing public key (PEM), shipped with the package
+  ca_bundle: ""                 # internal CA certificate for HTTPS, optional
+
+features_default:               # E1 - Admin can change these in the Features page
+  cowork_mode: true
+  claude_api_mode: false
+  local_model: false
+  router: false
+  rag: true
+  distillation: false
+  batch_runs: true
+  fiori: false
+  hub_sync: false

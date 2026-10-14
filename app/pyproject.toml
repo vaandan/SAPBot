@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sapbot"
+version = "0.1.0"
+description = "SAPBot - autonomous SAP GUI operator with RAG and distillation (Logic-motive)"
+requires-python = ">=3.11"
+authors = [{ name = "Logic-motive" }]
+dependencies = [
+  "pydantic>=2.6",
+  "PyYAML>=6.0",
+  "mcp>=1.2",
+  "anthropic>=0.40",
+  "httpx>=0.27",
+  "pandas>=2.1",
+  "openpyxl>=3.1",
+  "chromadb>=0.5",
+  "streamlit>=1.40",
+  "cryptography>=42",
+  "keyring>=25",
+  "pywin32>=306; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+hub = ["fastapi>=0.110", "uvicorn>=0.29"]
+dev = ["pytest>=8"]
+train = ["unsloth", "trl", "datasets"]
+
+[project.scripts]
+sapbot = "sapbot.cli:main"
+sapbot-mcp = "sapbot.mcp_server:main"
+sapbot-hub = "sapbot.hub.app:main"
+
+[tool.setuptools.packages.find]
+include = ["sapbot*"]
+
+[tool.setuptools.package-data]
+sapbot = ["scripts/vbs/*.vbs", "ui/*.css", "ui/.streamlit/*.toml", "defaults/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

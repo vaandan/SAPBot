@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+wheelhouse/
+.pytest_cache/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# SAPBot Runtime Directories (Local PC Data & Secrets)
+data/
+logs/
+workspaces/
+config/sapbot.yaml
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,87 @@
+/* SAPBot Cockpit - SAP Fiori Horizon visual language (ADR E4). System font, no SAP logos. */
+:root {
+  --sb-shell: #1D2D3E;
+  --sb-bg: #F5F6F7;
+  --sb-card: #FFFFFF;
+  --sb-text: #1D2D3E;
+  --sb-muted: #556B82;
+  --sb-border: #E5E5E5;
+  --sb-brand: #0070F2;
+  --sb-brand-hover: #0064D9;
+  --sb-success: #256F3A;  --sb-success-bg: #F5FAE5;
+  --sb-warning: #E76500;  --sb-warning-bg: #FFF8D6;
+  --sb-error:   #AA0808;  --sb-error-bg:   #FFEAF4;
+  --sb-info:    #0070F2;  --sb-info-bg:    #E1F4FF;
+  --sb-radius: 12px;
+  --sb-shadow: 0 0 0.125rem 0 rgba(34,53,72,.15), 0 0.125rem 0.5rem 0 rgba(34,53,72,.15);
+}
+html, body, [class*="css"], .stApp { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+.stApp { background: var(--sb-bg); }
+header[data-testid="stHeader"] { background: transparent; }
+.block-container { padding-top: 1.2rem; max-width: 1400px; }
+
+/* Shell bar */
+.sb-shell { position: relative; height: 3rem; border-radius: var(--sb-radius); margin-bottom: 1rem;
+  background: var(--sb-shell); color: #fff; display: flex; align-items: center; gap: 1rem; padding: 0 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,.2); font-size: .875rem; }
+.sb-shell .sb-product { font-weight: 700; font-size: 1rem; letter-spacing: .2px; }
+.sb-shell .sb-product span { color: #8CC7FF; font-weight: 400; }
+.sb-shell .sb-spacer { flex: 1; }
+.sb-shell .sb-chip { background: rgba(255,255,255,.12); border-radius: 1rem; padding: .15rem .7rem; }
+.sb-shell .sb-avatar { width: 2rem; height: 2rem; border-radius: 50%; background: #8CC7FF; color: var(--sb-shell);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; }
+
+/* Context bar (workspace / system / mode) */
+.sb-context { background: var(--sb-card); border-radius: var(--sb-radius); box-shadow: var(--sb-shadow);
+  padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; margin-bottom: .8rem; }
+.sb-context .lbl { color: var(--sb-muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .4px; }
+.sb-context .val { font-weight: 600; }
+
+/* Object page header */
+.sb-objhdr { margin: .2rem 0 1rem 0; }
+.sb-objhdr h1 { font-size: 1.5rem; font-weight: 700; margin: 0; color: var(--sb-text); }
+.sb-objhdr .sub { color: var(--sb-muted); font-size: .875rem; }
+
+/* Cards / tiles */
+.sb-card { background: var(--sb-card); border-radius: var(--sb-radius); box-shadow: var(--sb-shadow);
+  padding: 1rem 1.1rem; margin-bottom: .8rem; }
+.sb-tile { background: var(--sb-card); border-radius: 1rem; box-shadow: var(--sb-shadow); padding: .9rem 1rem;
+  min-height: 6.2rem; }
+.sb-tile .t { font-size: .8125rem; color: var(--sb-muted); }
+.sb-tile .kpi { font-size: 1.75rem; font-weight: 300; color: var(--sb-text); line-height: 1.2; margin-top: .3rem; }
+.sb-tile .foot { font-size: .75rem; color: var(--sb-muted); }
+div[data-testid="stVerticalBlockBorderWrapper"] { border-radius: var(--sb-radius) !important; background: var(--sb-card); }
+
+/* Object status (semantic) */
+.sb-status { display: inline-flex; align-items: center; gap: .35rem; padding: .1rem .55rem; border-radius: .5rem;
+  font-size: .8125rem; font-weight: 600; border: 1px solid transparent; }
+.sb-status.S { color: var(--sb-success); background: var(--sb-success-bg); border-color: #BDE986; }
+.sb-status.W { color: var(--sb-warning); background: var(--sb-warning-bg); border-color: #FFDF72; }
+.sb-status.E, .sb-status.A { color: var(--sb-error); background: var(--sb-error-bg); border-color: #FF8CB2; }
+.sb-status.I, .sb-status.N { color: var(--sb-info); background: var(--sb-info-bg); border-color: #A6E0FF; }
+.sb-status.PROD { color: #fff; background: var(--sb-error); }
+.sb-status.QA { color: var(--sb-info); background: var(--sb-info-bg); }
+.sb-status.RO { color: var(--sb-muted); background: #EFF1F2; border-color: #D9D9D9; }
+.sb-status.RW { color: var(--sb-warning); background: var(--sb-warning-bg); }
+
+/* Buttons */
+.stButton > button, .stDownloadButton > button, .stFormSubmitButton > button {
+  border-radius: .5rem; font-weight: 600; border: 1px solid #BCC3CA; }
+.stButton > button[kind="primary"], .stFormSubmitButton > button[kind="primary"] {
+  background: var(--sb-brand); border-color: var(--sb-brand); }
+.stButton > button[kind="primary"]:hover { background: var(--sb-brand-hover); }
+
+/* Sidebar like a Fiori side navigation */
+section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div { background: #FFFFFF;
+  border-right: 1px solid var(--sb-border); }
+[data-testid="stSidebarNav"] a[aria-current="page"] { background: var(--sb-info-bg); border-radius: .5rem; }
+section[data-testid="stSidebar"] .sb-side-user { padding: .5rem .2rem; color: var(--sb-muted); font-size: .8rem; }
+
+/* Tables */
+div[data-testid="stDataFrame"] { border-radius: var(--sb-radius); overflow: hidden; box-shadow: var(--sb-shadow); }
+
+/* Step stream */
+.sb-step { border-left: 3px solid var(--sb-brand); padding: .2rem .6rem; margin: .25rem 0; background: #fff;
+  border-radius: 0 .5rem .5rem 0; font-size: .875rem; }
+.sb-step.err { border-left-color: var(--sb-error); }
+.sb-step.think { border-left-color: #8396A8; color: var(--sb-muted); font-style: italic; }

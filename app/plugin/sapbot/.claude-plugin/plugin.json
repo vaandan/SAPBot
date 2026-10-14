@@ -1,0 +1,6 @@
+{
+  "name": "sapbot",
+  "version": "0.1.0",
+  "description": "SAPBot - SAP GUI work for Logic-motive consultants through the SAPBot safety policy (tool server installed by SAPBot-Setup / install.ps1).",
+  "author": { "name": "Logic-motive" }
+}
