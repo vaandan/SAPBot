@@ -29,6 +29,7 @@ class AdminAPI(Protocol):
     def flags(self, scope: str = "firm") -> dict[str, bool]: ...
     def set_flag(self, name: str, value: bool, scope: str = "firm") -> None: ...
     def audit_rows(self, limit: int = 500, workspace: str | None = None, event: str | None = None) -> list[dict]: ...
+    def save_workspace(self, ws: Any) -> None: ...
 
 
 class LocalAdmin:
@@ -108,6 +109,10 @@ class LocalAdmin:
 
     def set_flag(self, name: str, value: bool, scope: str = "firm") -> None:
         self.gov.set_feature(name, value, scope)
+
+    def save_workspace(self, ws: Any) -> None:
+        self._admin()
+        ws.save()
 
     def audit_rows(self, limit: int = 500, workspace: str | None = None, event: str | None = None) -> list[dict]:
         if not self.gov.is_admin():

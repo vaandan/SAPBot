@@ -7,7 +7,7 @@ import os
 from typing import Any, Callable
 
 from . import paths
-from .config import get_settings
+from .config import apply_network_settings, get_settings
 from .scripts.library import RunFn, ScriptLibrary, ScriptRunner
 from .security.approvals import ApprovalBroker, ApprovalCallback
 from .security.governance import Governance
@@ -39,9 +39,10 @@ def setup_logging(name: str = "sapbot", to_stderr: bool = True) -> None:
 
 def build(channel: str = "cowork", *, model: str = "", app_factory: Callable[[], Any] | None = None,
           approval_callback: ApprovalCallback | None = None, approval_mode: str | None = None,
-          script_run_fn: RunFn | None = None) -> ToolExecutor:
+          script_run_fn: RunFn | None = None, auto_sync: bool = True) -> ToolExecutor:
     paths.ensure_layout()
     s = get_settings()
+    apply_network_settings()
     store = Store()
     store.bootstrap()
     gov = Governance(store)
@@ -54,4 +55,8 @@ def build(channel: str = "cowork", *, model: str = "", app_factory: Callable[[],
                             approval_callback)
     lib = ScriptLibrary(store)
     runner = ScriptRunner(lib, script_run_fn)
-    return ToolExecutor(gov, bridge, broker, lib, runner, channel=channel, model=model, settings=s)
+    ex = ToolExecutor(gov, bridge, broker, lib, runner, channel=channel, model=model, settings=s)
+    if auto_sync and s.hub.url and (gov.enrolled or gov.feature("hub_sync")):
+        from .hub.client import start_auto_sync
+        start_auto_sync(ex)
+    return ex

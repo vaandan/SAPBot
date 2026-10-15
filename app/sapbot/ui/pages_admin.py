@@ -91,9 +91,13 @@ def page_ws_admin() -> None:
         tcodes = st.text_input("Extra allowed T-codes (comma) - display T-codes are always allowed", "")
         if st.form_submit_button("Create workspace", type="primary"):
             try:
-                ws = wsmod.create(wid, name or wid, [r for r in systems.to_dict("records") if r.get("sid")],
-                                  data_policy=pol, allowed_tcodes=[t.strip().upper() for t in tcodes.split(",")
-                                                                   if t.strip()])
+                if wid.strip().lower() in [w.id for w in wsmod.list_all()]:
+                    raise FileExistsError(f"workspace '{wid}' already exists")
+                ws = wsmod.Workspace(id=wid, name=name or wid, data_policy=pol,
+                                     systems=[wsmod.SapSystem(**r) for r in systems.to_dict("records") if r.get("sid")],
+                                     allowed_tcodes=[t.strip().upper() for t in tcodes.split(",") if t.strip()])
+                admin().save_workspace(ws)      # Hub mode: saved centrally, laptops get it on next sync
+                ws.save()
                 ex.gov.store.audit(ex.gov.username(), ws.id, "WORKSPACE_CREATED", ws.model_dump())
                 st.success(f"Created {ws.id} - folder {ws.root}")
             except Exception as e:  # noqa: BLE001
@@ -124,6 +128,7 @@ def page_ws_admin() -> None:
                               for r in systems.to_dict("records") if r.get("sid")]
                 ws.allowed_tcodes = [t.strip().upper() for t in tcodes.split(",") if t.strip()]
                 ws.mask_fields = [t.strip().upper() for t in mask.split(",") if t.strip()]
+                admin().save_workspace(ws)
                 ws.save()
                 ex.gov.store.audit(ex.gov.username(), ws.id, "WORKSPACE_UPDATED", ws.model_dump())
                 st.success("Saved.")
@@ -229,10 +234,14 @@ def page_script_approval() -> None:
         prod = st.checkbox("Also allow on PRODUCTION (still needs a grant + per-run approval)")
         if st.button("Approve this content", type="primary"):
             if folder:
-                ex.library.promote(pick, folder, ex.gov.username(), prod)
+                info = ex.library.promote(pick, folder, ex.gov.username(), prod)
             else:
                 ex.gov.store.approve_script(info.path, info.digest, ex.gov.username(), prod)
-            st.success("Approved.")
+            if ex.gov.hub_mode:            # publish centrally: every laptop gets it on its next sync
+                adm = admin()
+                if hasattr(adm, "publish_script"):
+                    adm.publish_script(info.path, ex.library.resolve(info.path).read_text(encoding="utf-8"), prod)
+            st.success("Approved" + (" and published to the Hub." if ex.gov.hub_mode else "."))
             st.rerun()
         if info.approval and st.button("Revoke approval"):
             ex.gov.store.revoke_script(info.path, info.digest, ex.gov.username())
@@ -357,17 +366,30 @@ def page_learning() -> None:
 def page_hub() -> None:
     if not _need_admin():
         return
+    import json as _json
+    from pathlib import Path
+
+    from ..config import machine_locked
+    from ..security.signing import fingerprint
     ex = executor()
     s = get_settings()
     page_header("Hub", "Central users, grants, signed policy, script library and sync (office server).")
-    st.markdown(f"Hub URL: **{esc(s.hub.url or 'not configured')}** · hub mode: **{ex.gov.hub_mode}** · "
-                f"enrolled: **{ex.gov.enrolled}**", unsafe_allow_html=True)
-    with st.form("hubcfg"):
-        url = st.text_input("Hub URL", s.hub.url, placeholder="https://sapbot-hub.office.local:8443")
-        pk = st.text_input("Hub public key file (PEM)", s.hub.public_key_file)
-        ca = st.text_input("Internal CA bundle (optional)", s.hub.ca_bundle)
-        if st.form_submit_button("Save"):
-            save_settings_patch({"hub": {"url": url, "public_key_file": pk, "ca_bundle": ca}})
-            st.success("Saved - restart the Cockpit.")
-    st.caption("Enrol this laptop: set the Hub token (`sapbot secret set hub_token`), then Settings > Sync with Hub. "
-               "After enrolment, users, grants and features come only from the Hub's signed policy.")
+    b = ex.gov.bundle or {}
+    pk = Path(s.hub.public_key_file) if s.hub.public_key_file else None
+    st.dataframe(pd.DataFrame([
+        {"Item": "Hub URL", "Value": s.hub.url or "not configured"},
+        {"Item": "Enrolled / Hub mode", "Value": f"{ex.gov.enrolled} / {ex.gov.hub_mode}"},
+        {"Item": "IT machine policy", "Value": str(machine_locked())},
+        {"Item": "Policy issued / expires", "Value": f"{b.get('issued', '-')} / {b.get('expires', '-')}"},
+        {"Item": "Public key fingerprint", "Value": fingerprint(pk.read_bytes()) if pk and pk.exists() else "-"},
+        {"Item": "Last sync", "Value": _json.dumps(_json.loads(ex.gov.store.kv_get("hub_last_sync") or "null"))[:200]},
+        {"Item": "Last sync error", "Value": ex.gov.store.kv_get("hub_last_error") or "-"},
+    ]), hide_index=True, use_container_width=True)
+    st.caption("Enrol a laptop with `sapbot enroll --hub https://<server>:8443 --pubkey <file> --fingerprint <fp>` "
+               "(DEPLOYMENT.md section 6). After enrolment users, grants and features come only from the Hub.")
+    if s.hub.url and st.button("Sync now"):
+        from ..hub.client import HubClient
+        try:
+            st.json(HubClient.from_settings(ex.gov).sync(ex))
+        except Exception as e:  # noqa: BLE001
+            st.error(str(e))

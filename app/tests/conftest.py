@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT))
 @pytest.fixture()
 def home(tmp_path, monkeypatch):
     monkeypatch.setenv("SAPBOT_HOME", str(tmp_path / "SAPBot"))
+    monkeypatch.setenv("SAPBOT_MACHINE_DIR", str(tmp_path / "machine"))
     monkeypatch.delenv("SAPBOT_WORKSPACE", raising=False)
     from sapbot import config
     from sapbot.memory import embeddings

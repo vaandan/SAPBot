@@ -9,6 +9,7 @@
   sapbot feature list|set           sapbot secret set <name>
   sapbot run "<task>" [--brain claude|local]   API mode (FSD 3.4 loop)
   sapbot batch --excel F --script S --map PARAM=Column ...
+  sapbot enroll --hub URL --pubkey F [--fingerprint FP]   sapbot sync   sapbot hub-status
   sapbot mcp | mcp-register         sapbot cockpit                  sapbot export-training
 """
 from __future__ import annotations
@@ -207,6 +208,8 @@ def cmd_grant(a: argparse.Namespace) -> None:
         return
     if not gov.store.leads_workspace(gov.username(), a.workspace):
         raise SystemExit("Only an Admin or the workspace's Engagement Lead can grant.")
+    if (a.username or "").lower() == gov.username() and not gov.is_admin():
+        raise SystemExit("Four-eyes rule: you cannot grant yourself access.")
     sid, cl = a.system.split("/")
     gid = gov.store.add_grant(a.username, a.workspace, sid, cl, a.tcodes, a.minutes, a.reason, gov.username())
     out({"grant": gid})
@@ -298,6 +301,52 @@ def cmd_cockpit(a: argparse.Namespace) -> None:
     subprocess.call([sys.executable, "-m", "streamlit", "run", str(ui / "app.py"), "--server.port", str(a.port),
                      "--server.address", "localhost", "--browser.gatherUsageStats", "false"],
                     cwd=str(ui))   # picks up ui/.streamlit/config.toml (Fiori theme)
+
+
+def cmd_enroll(a: argparse.Namespace) -> None:
+    """Join this laptop to the Hub (DEPLOYMENT.md section 6)."""
+    from .hub.client import enroll
+    s = get_settings()
+    hub = a.hub or s.hub.url                      # IT-managed laptops: taken from the machine policy
+    pub = a.pubkey or s.hub.public_key_file
+    if not hub or not pub:
+        raise SystemExit("--hub and --pubkey are required (no machine policy found)")
+    token = a.token or getpass.getpass("Hub token (input hidden): ").strip()
+    ex = build("cli", auto_sync=False)
+    out(enroll(ex, hub, pub, token, a.ca_bundle or "", a.fingerprint or ""))
+
+
+def cmd_user_setup(a: argparse.Namespace) -> None:
+    """Per-user first run on an IT-managed laptop: data folder, Hub enrolment (token), Claude Desktop registration."""
+    from .config import machine_locked
+    home = paths.ensure_layout()
+    write_default_settings()
+    out({"data_folder": str(home), "machine_policy": machine_locked()})
+    if get_settings().hub.url:
+        cmd_enroll(argparse.Namespace(hub=None, pubkey=None, token=a.token, ca_bundle=None,
+                                      fingerprint=a.fingerprint))
+    cmd_mcp_register(a)
+    out({"next": ["log on to SAP in SAP Logon", "run: sapbot probe", "restart Claude Desktop from the tray icon"]})
+
+
+def cmd_sync(a: argparse.Namespace) -> None:
+    from .hub.client import HubClient
+    ex = build("cli", auto_sync=False)
+    out(HubClient.from_settings(ex.gov).sync(ex))
+
+
+def cmd_hub_status(a: argparse.Namespace) -> None:
+    from .security.signing import fingerprint
+    s = get_settings()
+    gov = _gov()
+    pk = Path(s.hub.public_key_file) if s.hub.public_key_file else None
+    b = gov.bundle or {}
+    out({"hub_url": s.hub.url or None, "enrolled": gov.enrolled, "hub_mode": gov.hub_mode,
+         "restricted": gov.restricted, "user": gov.username(), "role": gov.role(),
+         "policy_issued": b.get("issued"), "policy_expires": b.get("expires"),
+         "public_key_fingerprint": fingerprint(pk.read_bytes()) if pk and pk.exists() else None,
+         "last_sync": json.loads(gov.store.kv_get("hub_last_sync") or "null"),
+         "last_error": gov.store.kv_get("hub_last_error")})
 
 
 def cmd_export_training(a: argparse.Namespace) -> None:
@@ -401,6 +450,19 @@ def build_parser() -> argparse.ArgumentParser:
     c = sp.add_parser("cockpit")
     c.add_argument("--port", type=int, default=8501)
     c.set_defaults(fn=cmd_cockpit)
+    en = sp.add_parser("enroll", help="join this laptop to the SAPBot Hub")
+    en.add_argument("--hub", help="https://<server>:8443 (not needed on IT-managed laptops)")
+    en.add_argument("--pubkey", help="policy_signing.pub.pem received from IT (not needed on IT-managed laptops)")
+    en.add_argument("--fingerprint", help="expected key fingerprint (from the Hub admin) - strongly recommended")
+    en.add_argument("--token", help="omit to be prompted (keeps it out of the shell history)")
+    en.add_argument("--ca-bundle", help="corporate root CA (PEM) if the Hub certificate / proxy uses one")
+    en.set_defaults(fn=cmd_enroll)
+    us = sp.add_parser("user-setup", help="first run for a consultant on an IT-managed laptop")
+    us.add_argument("--token", help="omit to be prompted")
+    us.add_argument("--fingerprint", help="expected Hub key fingerprint")
+    us.set_defaults(fn=cmd_user_setup)
+    sp.add_parser("sync", help="sync now with the Hub").set_defaults(fn=cmd_sync)
+    sp.add_parser("hub-status", help="enrolment, policy expiry, last sync").set_defaults(fn=cmd_hub_status)
     et = sp.add_parser("export-training")
     et.add_argument("--workspace")
     et.add_argument("--out")

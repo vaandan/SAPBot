@@ -71,7 +71,12 @@ class ApprovalsCfg(BaseModel):
 class HubCfg(BaseModel):
     url: str = ""
     public_key_file: str = ""
-    ca_bundle: str = ""
+    ca_bundle: str = ""                 # legacy alias of network.ca_bundle
+    sync_interval_minutes: int = 240    # automatic sync while SAPBot runs (0 = only at start / manual)
+
+
+class NetworkCfg(BaseModel):
+    ca_bundle: str = ""                 # corporate root CA (PEM) for TLS-inspecting proxies / internal CA
 
 
 class Settings(BaseModel):
@@ -82,6 +87,7 @@ class Settings(BaseModel):
     sap: SapCfg = Field(default_factory=SapCfg)
     approvals: ApprovalsCfg = Field(default_factory=ApprovalsCfg)
     hub: HubCfg = Field(default_factory=HubCfg)
+    network: NetworkCfg = Field(default_factory=NetworkCfg)
     features_default: dict[str, bool] = Field(default_factory=dict)
     hub_bind_os_user: bool = True   # Hub usernames = Windows user names (A12); policy only valid for that user
 
@@ -106,7 +112,24 @@ def get_settings() -> Settings:
             data = _deep_merge(data, yaml.safe_load(f.read_text(encoding="utf-8")) or {})
         except yaml.YAMLError as e:
             log.error("Invalid %s (%s) - using defaults", f, e)
+    m = paths.machine_policy_file()          # IT-managed lock: always wins over the user's settings
+    if m.exists():
+        try:
+            data = _deep_merge(data, yaml.safe_load(m.read_text(encoding="utf-8")) or {})
+        except yaml.YAMLError as e:
+            log.error("Invalid machine policy %s (%s)", m, e)
     return Settings.model_validate(data)
+
+
+def machine_locked() -> bool:
+    """True when IT installed a machine policy that requires Hub governance."""
+    m = paths.machine_policy_file()
+    if not m.exists():
+        return False
+    try:
+        return bool((yaml.safe_load(m.read_text(encoding="utf-8")) or {}).get("require_hub", False))
+    except yaml.YAMLError:
+        return True
 
 
 def reload_settings() -> Settings:
@@ -129,3 +152,18 @@ def save_settings_patch(patch: dict[str, Any]) -> Settings:
     f.parent.mkdir(parents=True, exist_ok=True)
     f.write_text(yaml.safe_dump(_deep_merge(cur or {}, patch), sort_keys=False), encoding="utf-8")
     return reload_settings()
+
+
+def ca_bundle() -> str:
+    s = get_settings()
+    return s.network.ca_bundle or s.hub.ca_bundle or ""
+
+
+def apply_network_settings() -> None:
+    """Make every HTTPS client (Hub sync, Claude API, model download) trust the corporate CA. httpx honours
+    SSL_CERT_FILE; proxies come from the standard HTTPS_PROXY / NO_PROXY environment variables."""
+    import os
+    ca = ca_bundle()
+    if ca and Path(ca).exists():
+        os.environ.setdefault("SSL_CERT_FILE", ca)
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", ca)

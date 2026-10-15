@@ -38,15 +38,12 @@ class TrajectoryRAG:
         steps = [{"tool": s.tool, "args": {k: v for k, v in s.args.items() if k != "reasoning"},
                   "status": (s.status_bar or {}).get("type", ""), "msg": (s.status_bar or {}).get("text", "")[:160],
                   "why": s.reasoning[:200]} for s in run.steps]
-        capped_steps = steps[:30]
-        while len(capped_steps) > 1 and len(json.dumps(capped_steps, ensure_ascii=False)) > 20000:
-            capped_steps = capped_steps[:-1]
         final = run.final_status or "S"
         meta = {"task_prompt": run.task[:2000], "t_code": (run.t_codes[0] if run.t_codes else ""),
                 "t_codes": ",".join(run.t_codes), "step_count": len(run.steps),
                 "final_status": "S" if final in ("S", "") else final, "timestamp": run.ended,
                 "documents": ",".join(run.document_numbers), "summary": run.summary[:500],
-                "serialized_steps_json": json.dumps(capped_steps, ensure_ascii=False)}
+                "serialized_steps_json": json.dumps(steps, ensure_ascii=False)[:20000]}
         self.col.upsert(ids=[run.run_id], documents=[run.task], metadatas=[meta],
                         embeddings=self.embedder.embed([run.task]))
         return True
@@ -73,15 +70,10 @@ class TrajectoryRAG:
             sim = 1.0 - float(res["distances"][0][i])
             if sim < min_similarity:
                 continue
-            raw_steps = meta.get("serialized_steps_json")
-            try:
-                parsed_steps = json.loads(raw_steps) if raw_steps else []
-            except Exception:  # noqa: BLE001
-                parsed_steps = []
             out.append({"run_id": rid, "similarity": round(sim, 3), "task": meta.get("task_prompt"),
                         "t_codes": meta.get("t_codes"), "documents": meta.get("documents"),
                         "summary": meta.get("summary"),
-                        "steps": parsed_steps})
+                        "steps": json.loads(meta.get("serialized_steps_json") or "[]")})
         return out
 
     def build_augmented_prompt(self, task_prompt: str, top_k: int = 3, min_similarity: float = 0.0) -> tuple[str, list]:

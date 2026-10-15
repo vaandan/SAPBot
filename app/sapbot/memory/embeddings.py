@@ -59,9 +59,10 @@ class OnnxMiniLM:
 
     def __init__(self) -> None:
         from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
-        models = paths.home() / "models" / "onnx"
-        if models.exists():
-            ONNXMiniLM_L6_V2.DOWNLOAD_PATH = models  # type: ignore[attr-defined]
+        for models in (paths.machine_dir() / "models" / "onnx", paths.home() / "models" / "onnx"):
+            if models.exists():          # pre-fetched by the installer (offline / proxy-safe)
+                ONNXMiniLM_L6_V2.DOWNLOAD_PATH = models  # type: ignore[attr-defined]
+                break
         self._ef = ONNXMiniLM_L6_V2()
         self._ef(["probe"])  # forces download / load now
 

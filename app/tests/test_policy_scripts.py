@@ -121,3 +121,22 @@ def test_signed_policy_roundtrip(home, tmp_path):
     bundle["payload"]["user"]["role"] = "admin"          # tampering
     with pytest.raises(ValueError):
         g.install_bundle(bundle)
+
+
+def test_machine_policy_locks_laptop(home, tmp_path, monkeypatch):
+    from sapbot import config
+    from sapbot.security.governance import Governance
+    from sapbot.security.store import Store
+    md = tmp_path / "ProgramData" / "SAPBot"
+    md.mkdir(parents=True)
+    (md / "machine.yaml").write_text("require_hub: true\nhub:\n  url: https://hub.office.local:8443\n")
+    monkeypatch.setenv("SAPBOT_MACHINE_DIR", str(md))
+    config.get_settings.cache_clear()
+    st = Store()
+    st.bootstrap()
+    g = Governance(st)
+    assert st.list_users() == []                       # no local admin on an IT-managed laptop
+    assert g.enrolled and g.restricted and g.role() == "consultant"
+    assert config.get_settings().hub.url == "https://hub.office.local:8443"
+    config.save_settings_patch({"hub": {"url": "https://evil"}})
+    assert config.get_settings().hub.url == "https://hub.office.local:8443"   # user file cannot override

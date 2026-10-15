@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sapbot"
-version = "0.1.0"
+version = "0.1.1"
 description = "SAPBot - autonomous SAP GUI operator with RAG and distillation (Logic-motive)"
 requires-python = ">=3.11"
 authors = [{ name = "Logic-motive" }]

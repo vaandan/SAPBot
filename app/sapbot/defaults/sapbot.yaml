@@ -62,9 +62,12 @@ approvals:
   timeout_seconds: 300
 
 hub:
-  url: ""                       # e.g. https://sapbot-hub.office.local:8443
-  public_key_file: ""           # Hub policy-signing public key (PEM), shipped with the package
-  ca_bundle: ""                 # internal CA certificate for HTTPS, optional
+  url: ""                       # e.g. https://sapbot-hub.office.local:8443  (set by `sapbot enroll`)
+  public_key_file: ""           # Hub policy-signing public key (PEM)          (set by `sapbot enroll`)
+  sync_interval_minutes: 240    # automatic sync while SAPBot runs
+
+network:
+  ca_bundle: ""                 # corporate root CA (PEM): internal Hub certificate and/or TLS-inspecting proxy
 
 features_default:               # E1 - Admin can change these in the Features page
   cowork_mode: true

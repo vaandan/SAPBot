@@ -279,7 +279,7 @@ class ToolExecutor:
         view = self._mask(ws, view)
         sb = snap.get("status_bar", {})
         self._log_step("sap_observe_screen", a, True, sb, view, snap.get("transaction", ""), dec)
-        return ToolResult(ok=True, data=view, status_bar=StatusBar(**sb), policy=dec.as_dict())
+        return ToolResult(ok=True, data=view, status_bar=self._sb(ws, sb), policy=dec.as_dict())
 
     def _t_sap_act(self, a: dict[str, Any]) -> ToolResult:
         ok_code = str(a.get("ok_code") or "").strip()
@@ -339,7 +339,7 @@ class ToolExecutor:
         view = self._mask(ws, out)
         self._log_step("sap_act", a, sb.get("type") not in ("E", "A"), sb, view, out.get("transaction", cur_tx),
                        dec, is_write=bool(wr))
-        return ToolResult(ok=sb.get("type") not in ("E", "A"), data=view, status_bar=StatusBar(**sb),
+        return ToolResult(ok=sb.get("type") not in ("E", "A"), data=view, status_bar=self._sb(ws, sb),
                           policy=dec.as_dict(),
                           error=None if sb.get("type") not in ("E", "A") else f"SAP {sb.get('type')}: {sb.get('text')}")
 
@@ -385,7 +385,7 @@ class ToolExecutor:
         self._remember_status("run_saved_script", a, sb)
         self._log_step("run_saved_script", a, ok, sb, view, (info.scan["tcodes"] or [""])[0], dec,
                        is_write=not info.scan["read_only"])
-        return ToolResult(ok=ok, data=view, status_bar=StatusBar(**sb), policy=dec.as_dict(),
+        return ToolResult(ok=ok, data=view, status_bar=self._sb(ws, sb), policy=dec.as_dict(),
                           error=None if ok else (out["stderr"] or f"script ended with code {out['return_code']}"))
 
     def _meta_gate(self, tool: str) -> tuple[wsmod.Workspace | None, ToolResult | None]:
@@ -599,6 +599,9 @@ class ToolExecutor:
             return out
         except Exception as e:  # noqa: BLE001
             return {"rolled_back": False, "error": str(e)}
+
+    def _sb(self, ws: wsmod.Workspace, sb: dict[str, Any]) -> StatusBar:
+        return StatusBar(**(self._mask(ws, dict(sb)) if ws.data_policy == "masked" else sb))
 
     def _mask(self, ws: wsmod.Workspace, obj: Any) -> Any:
         return mask_obj(obj, ws.mask_fields) if ws.data_policy == "masked" else obj

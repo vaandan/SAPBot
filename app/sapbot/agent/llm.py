@@ -76,6 +76,9 @@ class ClaudeLLM:
         kw: dict[str, Any] = {"api_key": key}
         if base_url:
             kw["base_url"] = base_url
+        from ..config import ca_bundle
+        if ca_bundle():
+            kw["http_client"] = anthropic.DefaultHttpxClient(verify=ca_bundle())
         self.client = anthropic.Anthropic(**kw)
         self.model = model
         self.max_tokens = max_tokens

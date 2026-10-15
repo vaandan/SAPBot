@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import time
 import logging
 from pathlib import Path
 from typing import Any
@@ -38,11 +39,32 @@ class Governance:
     def __init__(self, store: Store | None = None) -> None:
         self.store = store or Store()
         self.settings = get_settings()
-        self._bundle: dict[str, Any] | None = None
+        self._b: dict[str, Any] | None = None
+        self._loaded_issued = ""
+        self._checked = 0.0
         self._load_cached_bundle()
+
+    @property
+    def _bundle(self) -> dict[str, Any] | None:
+        """Current signed policy. Re-read at most every 15 s so a sync done by another process (Cockpit, CLI)
+        takes effect in the running tool server, and an expired policy stops working without a restart."""
+        now = time.monotonic()
+        if now - self._checked > 15:
+            self._checked = now
+            if (self.store.kv_get("hub_policy_issued") or "") != self._loaded_issued:
+                self._load_cached_bundle()
+            elif self._b is not None and dt.datetime.fromisoformat(self._b["expires"]) < dt.datetime.now():
+                log.warning("Hub policy expired - SAPBot is restricted until the next successful sync")
+                self._b = None
+        return self._b
+
+    @_bundle.setter
+    def _bundle(self, value: dict[str, Any] | None) -> None:
+        self._b = value
 
     # ---------------------------------------------------------------- hub bundle
     def _load_cached_bundle(self) -> None:
+        self._loaded_issued = self.store.kv_get("hub_policy_issued") or ""
         raw = self.store.kv_get("hub_policy_bundle")
         if not raw:
             return
@@ -68,15 +90,17 @@ class Governance:
         return payload
 
     def install_bundle(self, bundle: dict[str, Any]) -> None:
-        self._bundle = self.verify_bundle(bundle)
+        payload = self.verify_bundle(bundle)
         self.store.kv_set("hub_policy_bundle", json.dumps(bundle))
-        self.store.kv_set("hub_policy_issued", self._bundle.get("issued", ""))
+        self.store.kv_set("hub_policy_issued", payload.get("issued", ""))
+        self._b, self._loaded_issued, self._checked = payload, payload.get("issued", ""), time.monotonic()
         self.store.kv_set("hub_enrolled", "1")   # from now on local admin rights no longer apply
 
     @property
     def enrolled(self) -> bool:
         """Once a laptop has received a Hub policy it stays Hub-governed (no falling back to local admin)."""
-        return self.store.kv_get("hub_enrolled") == "1"
+        from ..config import machine_locked
+        return self.store.kv_get("hub_enrolled") == "1" or machine_locked()
 
     @property
     def hub_mode(self) -> bool:

@@ -44,27 +44,11 @@ Sub SetT(id, v)
   s.FindById(id).Text=v
 End Sub
 Sub Key(n)
-  Dim w
-  On Error Resume Next
-  Set w = s.ActiveWindow
-  If Err.Number <> 0 Or TypeName(w) = "Nothing" Or IsEmpty(w) Then
-    Set w = s.FindById("wnd[0]")
-  End If
-  Err.Clear
-  On Error GoTo 0
-  w.SendVKey n: W
+  s.FindById("wnd[0]").SendVKey n: W
 End Sub
 Function Sbar()
-  Dim b
-  On Error Resume Next
-  Set b=s.FindById("wnd[0]/sbar")
-  If Err.Number=0 And Not b Is Nothing Then
-    Sbar=b.MessageType & ": " & b.Text
-  Else
-    Sbar=""
-  End If
-  Err.Clear
-  On Error GoTo 0
+  Dim b: Set b=s.FindById("wnd[0]/sbar")
+  Sbar=b.MessageType & ": " & b.Text
 End Function
 ' Dumps the control tree of a window (ids, types, texts) so field ids can be found.
 Sub Dump(wid, depthMax)

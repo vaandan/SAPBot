@@ -42,3 +42,13 @@ def verify(bundle: dict[str, Any], public_pem: bytes) -> dict[str, Any]:
     except (InvalidSignature, KeyError, ValueError) as e:
         raise ValueError(f"policy signature invalid: {e}") from e
     return bundle["payload"]
+
+
+def fingerprint(public_pem: bytes) -> str:
+    """SHA-256 of the DER public key, shown as 16 groups of 4 hex chars - compare it out-of-band when a laptop is
+    enrolled (the key file must come from IT, never be trusted just because the Hub served it)."""
+    import hashlib
+    key = serialization.load_pem_public_key(public_pem)
+    der = key.public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+    h = hashlib.sha256(der).hexdigest().upper()
+    return ":".join(h[i:i + 4] for i in range(0, len(h), 4))

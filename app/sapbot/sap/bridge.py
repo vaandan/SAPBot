@@ -143,18 +143,9 @@ class SAPGuiBridge:
         sb = self._find(ses, "wnd[0]/sbar")
         if sb is None:
             return StatusBar()
-        raw_params = prop(sb, "MessageParameter", None)
-        params: list[str] = []
-        if isinstance(raw_params, str):
-            params = [p for p in raw_params.split("|") if p]
-        else:
-            for i in range(1, 9):
-                try:
-                    p = sb.MessageParameter(i)
-                    if p:
-                        params.append(str(p).strip())
-                except Exception:  # noqa: BLE001
-                    break
+        params = prop(sb, "MessageParameter", "")
+        if isinstance(params, str):
+            params = [p for p in params.split("|") if p] if params else []
         return StatusBar(type=str(prop(sb, "MessageType")), text=str(prop(sb, "Text")),
                          msg_id=str(prop(sb, "MessageId")).strip(), msg_number=str(prop(sb, "MessageNumber")).strip(),
                          msg_params=[str(p) for p in list(params)])
@@ -374,13 +365,12 @@ class SAPGuiBridge:
             self._wait(ses)
             done.append(f"vkey {vkey}")
         acked = []
-        allow_set = set(allow)
         for _ in range(5):  # FSD 3.1.5, restricted to allow-listed warnings (project safety rule)
             sb = self._status(ses)
-            if sb.type == "W" and ("*" in allow_set or (sb.key and sb.key in allow_set)):
-                self._active_window(ses).SendVKey(0)
+            if sb.type == "W" and sb.key and sb.key in allow:
+                ses.FindById("wnd[0]").SendVKey(0)
                 self._wait(ses)
-                acked.append(sb.key or "W")
+                acked.append(sb.key)
             else:
                 break
         info = self._info(ses)

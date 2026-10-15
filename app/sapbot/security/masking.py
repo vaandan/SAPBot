@@ -10,7 +10,7 @@ PATTERNS = [
     (re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b"), "<IBAN>"),
     (re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b"), "<PAN>"),                       # Indian PAN
     (re.compile(r"(?<!\d)(?:\+?\d[\d \-]{9,14}\d)(?!\d)"), "<PHONE>"),
-    (re.compile(r"""(?i)\b(password|passwort|pwd|token|api[_-]?key|secret)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|\S+)"""), r"\1=<SECRET>"),
+    (re.compile(r"(?i)\b(password|passwort|pwd|token|api[_-]?key|secret)\b\s*[:=]\s*\S+"), r"\1=<SECRET>"),
 ]
 SECRET_FIELD = re.compile(r"(?i)(pass|pwd|token|secret|bcode)")
 

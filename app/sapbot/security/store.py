@@ -100,6 +100,9 @@ class Store:
     # ---------------------------------------------------------------- users
     def bootstrap(self) -> dict[str, Any]:
         """First run on a laptop: the current Windows user becomes admin if no user exists yet."""
+        from ..config import machine_locked
+        if machine_locked():          # IT-managed laptop: roles come only from the Hub
+            return self.get_user(current_os_user()) or {}
         if not self._one("SELECT username FROM users LIMIT 1"):
             u = current_os_user()
             self.upsert_user(u, u, "admin")
